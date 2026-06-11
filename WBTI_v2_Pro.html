@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WBTI_v2_Pro 西游人格测试</title>
+<style>
+body{font-family:'Microsoft YaHei',sans-serif;background:#faf6ee;margin:0;padding:0}
+.container{max-width:900px;margin:auto;padding:20px}
+.card{background:#fff;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);margin-bottom:20px}
+h1,h2,h3{margin:10px 0}
+button{padding:10px 16px;border:none;border-radius:8px;background:#c53d13;color:#fff;cursor:pointer}
+button:hover{background:#b22222}
+.option{display:block;margin:10px 0;padding:10px;border:1px solid #ddd;border-radius:8px;cursor:pointer}
+.tag{display:inline-block;background:#ffd700;padding:4px 8px;margin:2px;border-radius:10px;font-size:14px}
+.info-list{list-style: disc;padding-left: 20px}
+.progress-bar{height:10px;background:#c53d13;border-radius:5px;transition:width 0.3s}
+</style>
+</head>
+<body>
+<div class="container" id="homePage">
+<h1>西游 WBTI_v2_Pro 人格测试</h1>
+<p>通过 24 道题，探索你在西游世界中的人格类型。</p>
+<button id="startBtn">开始测试</button>
+</div>
+
+<div class="container" id="quizPage" style="display:none;">
+<div class="progress-bar" id="progressBar"></div>
+<div id="questionContainer"></div>
+</div>
+
+<div class="container" id="resultPage" style="display:none;">
+<div class="card" id="resultCard">
+<div style="font-size:50px;" id="resultAvatar"></div>
+<h2 id="resultRole"></h2>
+<h3 id="resultType"></h3>
+<p id="resultDesc"></p>
+<div><b>关键词：</b><span id="resultTags"></span></div>
+<div><b>优势：</b><ul id="resultStrengths" class="info-list"></ul></div>
+<div><b>成长课题：</b><ul id="resultChallenges" class="info-list"></ul></div>
+<div><b>最佳搭档：</b><span id="resultPartners"></span></div>
+<div><b>冲突人格：</b><span id="resultConflicts"></span></div>
+<div id="shareExportBtns"></div>
+</div>
+</div>
+
+<div class="poster-mask" id="posterMask">
+<div class="card poster">
+<h2 id="posterRole"></h2>
+<h3 id="posterType"></h3>
+<p id="posterQuote"></p>
+<button id="closePoster">关闭</button>
+</div>
+</div>
+
+<div class="footer">© 2026 西游 WBTI_v2_Pro</div>
+
+<script>
+// ========== 基础数据 ==========
+const quizPage = document.getElementById('quizPage');
+const resultPage = document.getElementById('resultPage');
+const questionContainer = document.getElementById('questionContainer');
+const progressBar = document.getElementById('progressBar');
+const startBtn = document.getElementById('startBtn');
+let currentQuestionIndex=0;
+let dimensions={action:0,desire:0,strategy:0,worldview:0};
+
+const questions=[
+{q:"遇到问题时，你会立刻行动还是先观察？",a:"立刻行动",b:"先观察",dim:"action"},
+{q:"在团队中，你更愿意带头还是支持他人？",a:"带头",b:"支持",dim:"strategy"},
+{q:"面对未知挑战，你会兴奋还是谨慎？",a:"兴奋",b:"谨慎",dim:"desire"},
+{q:"你更注重长远目标还是眼前利益？",a:"长远目标",b:"眼前利益",dim:"worldview"},
+{q:"当出现阻碍时，你会尝试突破还是稳住局面？",a:"突破",b:"稳住",dim:"action"},
+{q:"你做决定时更依赖直觉还是分析？",a:"直觉",b:"分析",dim:"strategy"},
+{q:"面对诱惑，你会随心还是克制？",a:"随心",b:"克制",dim:"desire"},
+{q:"你更倾向创新还是守序？",a:"创新",b:"守序",dim:"worldview"},
+{q:"在团队冲突中，你会主动解决还是避免？",a:"主动",b:"避免",dim:"action"},
+{q:"你偏向立即行动还是先思考？",a:"立即",b:"思考",dim:"strategy"},
+{q:"面对新环境，你更冒险还是谨慎？",a:"冒险",b:"谨慎",dim:"desire"},
+{q:"你更看重理想还是现实？",a:"理想",b:"现实",dim:"worldview"},
+{q:"你喜欢挑战还是稳定？",a:"挑战",b:"稳定",dim:"action"},
+{q:"你做决策时更依赖直觉还是逻辑？",a:"直觉",b:"逻辑",dim:"strategy"},
+{q:"面对选择，你更冲动还是克制？",a:"冲动",b:"克制",dim:"desire"},
+{q:"你更注重规则还是自由？",a:"规则",b:"自由",dim:"worldview"},
+{q:"团队中，你喜欢冒险还是按计划？",a:"冒险",b:"按计划",dim:"action"},
+{q:"你在行动前会先分析还是直接行动？",a:"分析",b:"直接行动",dim:"strategy"},
+{q:"面对诱惑，你会顺从还是自律？",a:"顺从",b:"自律",dim:"desire"},
+{q:"你更关注潜力还是风险？",a:"潜力",b:"风险",dim:"worldview"},
+{q:"遇到问题，你先尝试还是观望？",a:"尝试",b:"观望",dim:"action"},
+{q:"做计划时，你依赖直觉还是策略？",a:"直觉",b:"策略",dim:"strategy"},
+{q:"你更喜欢自由还是规律？",a:"自由",b:"规律",dim:"desire"},
+{q:"你更重视理想还是现实？",a:"理想",b:"现实",dim:"worldview"}
+];
+
+// 简化 58人物示例
+const characters=[
+{name:"孙悟空",type:"齐天型",avatar:"🐵",tags:["自由","勇敢","智慧"],quote:"敢问路在何方",strengths:["勇敢","机智"],challenges:["冲动","任性"],partners:"猪八戒、沙僧",conflicts:"牛魔王、白骨精",desc:"你天生有领袖气质"},
+{name:"唐僧",type:"慈悲型",avatar:"👳",tags:["慈悲","耐心","坚定"],quote:"心存善念",strengths:["耐心","包容"],challenges:["优柔","犹豫"],partners:"孙悟空、沙僧",conflicts:"红孩儿",desc:"你善于引导和帮助他人"},
+{name:"猪八戒",type:"享乐型",avatar:"🐷",tags:["幽默","憨厚","社交"],quote:"吃喝玩乐皆自在",strengths:["社交","幽默"],challenges:["拖延","贪吃"],partners:"孙悟空、沙僧",conflicts:"白骨精",desc:"你是团队活跃分子"},
+{name:"沙僧",type:"稳重型",avatar:"🧑‍🦱",tags:["忠诚","稳重","耐心"],quote:"不怕困难，坚持到底",strengths:["耐心","稳定"],challenges:["表达不足"],partners:"唐僧、孙悟空",conflicts:"牛魔王",desc:"你是团队可靠支柱"}
+// ... 可补充更多人物至 58
+];
+
+// =======================
+// 功能函数
+// =======================
+
+function loadQuestion(){
+if(currentQuestionIndex>=questions.length){calculateResult();return;}
+const q=questions[currentQuestionIndex];
+questionContainer.innerHTML=`<div class="card">
+<h3>${q.q}</h3>
+<div class="option" onclick="answer(1,'${q.dim}')">${q.a}</div>
+<div class="option" onclick="answer(0,'${q.dim}')">${q.b}</div>
+<div class="progress-bar" style="width:${(currentQuestionIndex/questions.length*100).toFixed(0)}%"></div>
+</div>`;
+}
+
+function answer(val,dim){
+dimensions[dim]+=val;
+currentQuestionIndex++;
+loadQuestion();
+}
+
+function calculateResult(){
+const code=[dimensions.action>=3?'A':'B',
+dimensions.desire>=3?'A':'B',
+dimensions.strategy>=3?'A':'B',
+dimensions.worldview>=3?'A':'B'].join('');
+// 简单原型匹配
+let pool=['孙悟空','唐僧','猪八戒','沙僧'];
+let roleName=pool[Math.floor(Math.random()*pool.length)];
+let role=characters.find(r=>r.name===roleName);
+showResult(role);
+}
+
+function showResult(role){
+quizPage.style.display='none';
+resultPage.style.display='block';
+document.getElementById('resultAvatar').textContent=role.avatar;
+document.getElementById('resultRole').textContent=role.name;
+document.getElementById('resultType').textContent=role.type+'人格';
+document.getElementById('resultDesc').textContent=role.desc;
+document.getElementById('resultTags').textContent=role.tags.join('｜');
+document.getElementById('resultStrengths').innerHTML=role.strengths.map(s=>'<li>'+s+'</li>').join('');
+document.getElementById('resultChallenges').innerHTML=role.challenges.map(s=>'<li>'+s+'</li>').join('');
+document.getElementById('resultPartners').textContent=role.partners;
+document.getElementById('resultConflicts').textContent=role.conflicts;
+}
+
+startBtn.onclick=function(){
+document.getElementById('homePage').style.display='none';
+quizPage.style.display='block';
+loadQuestion();
+};
+</script>
+</body>
+</html>
